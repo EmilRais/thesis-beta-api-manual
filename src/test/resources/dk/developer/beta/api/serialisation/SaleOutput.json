@@ -1,0 +1,44 @@
+{
+  "name": "name",
+  "location": {
+    "latitude": 12.34,
+    "longitude": 56.78,
+    "address": "address",
+    "city": "city",
+    "postalCode": "postalCode"
+  },
+  "openingHours": "openingHours",
+  "fromDate": 1234,
+  "toDate": 5678,
+  "paymentOptions": [
+    {
+      "type": "PAYMENT_OPTION",
+      "value": "Dankort",
+      "_id": "1"
+    },
+    {
+      "type": "PAYMENT_OPTION",
+      "value": "Kontant",
+      "_id": "2"
+    }
+  ],
+  "types": [
+    {
+      "type": "TYPE",
+      "value": "Home",
+      "_id": "3"
+    }, {
+      "type": "TYPE",
+      "value": "Other",
+      "_id": "4"
+    }
+  ],
+  "brand": {
+    "type": "BRAND",
+    "value": "brand",
+    "_id": "5"
+  },
+  "description": "description",
+  "logo": "logo",
+  "_id": "abc123"
+}

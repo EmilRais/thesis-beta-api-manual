@@ -1,0 +1,9 @@
+{
+  "deviceToken": "token",
+  "exclusionFilters": [
+    "filter1", "filter2"
+  ],
+  "favoriteBrands": [
+    "brand1", "brand2"
+  ]
+}
