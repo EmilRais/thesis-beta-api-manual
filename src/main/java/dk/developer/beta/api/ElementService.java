@@ -16,8 +16,8 @@ import java.util.ListIterator;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static javax.ws.rs.core.Response.Status.CREATED;
-import static javax.ws.rs.core.Response.Status.OK;
+import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static javax.ws.rs.core.Response.Status.*;
 
 @Path("element")
 public class ElementService {
@@ -115,6 +115,20 @@ public class ElementService {
         return Response.status(OK).build();
     }
 
+    @POST
+    @Path("/delete/brand/{id}")
+    @Produces(TEXT_PLAIN)
+    public Response deleteBrand(@PathParam("id") @NotEmpty(message = "Der er ikke angivet et id") String id) {
+        if ( brandIsNeededByAnySale(id) )
+            return Response.status(BAD_REQUEST).entity("Brand er i brug hos et udsalg og kan ikke slettes").build();
+
+        boolean didDelete = database.delete(Element.Brand.class).matching("_id").with(id);
+        if ( !didDelete )
+            return Response.status(BAD_REQUEST).entity("Kunne ikke slette brand").build();
+
+        return Response.status(OK).build();
+    }
+
     private boolean deleteElementFromAllSales(String id) {
         List<Sale> sales = database.loadAll(Sale.class);
         for (Sale sale : sales) {
@@ -148,6 +162,13 @@ public class ElementService {
                 iterator.remove();
         }
         return true;
+    }
+
+    private boolean brandIsNeededByAnySale(String id) {
+        List<Sale> sales = database.loadAll(Sale.class);
+        return sales.stream()
+                .map(Sale::getBrand)
+                .anyMatch(brand -> brand.getId().equals(id));
     }
 
     private boolean elementIsUsedByASaleAsBrand(String id) {
