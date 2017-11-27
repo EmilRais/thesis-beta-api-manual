@@ -129,6 +129,38 @@ public class ElementService {
         return Response.status(OK).build();
     }
 
+    @POST
+    @Path("/delete/payment-option/{id}")
+    @Produces(TEXT_PLAIN)
+    public Response deletePaymentOption(@PathParam("id") @NotEmpty(message = "Der er ikke angivet et id") String id) {
+        if ( paymentOptionIsNeededByAnySale(id) )
+            return Response.status(BAD_REQUEST).entity("Betalingsmulighed er i brug hos et udsalg og kan ikke slettes").build();
+
+        boolean didUpdateAllSales = removePaymentOptionFromAllSales(id);
+        if ( !didUpdateAllSales )
+            return Response.status(BAD_REQUEST).entity("Der skete en fejl, da elementet skulle slettes fra et udsalg").build();
+
+        boolean didDelete = database.delete(Element.PaymentOption.class).matching("_id").with(id);
+        if ( !didDelete )
+            return Response.status(BAD_REQUEST).entity("Kunne ikke slette betalingsmulighed").build();
+
+        return Response.status(OK).build();
+    }
+
+    private boolean removePaymentOptionFromAllSales(String id) {
+        List<Sale> sales = database.loadAll(Sale.class);
+        for (Sale sale : sales) {
+            boolean didRemovePaymentOption = removeIfExists(id, sale.getPaymentOptions());
+            if ( !didRemovePaymentOption )
+                continue;
+
+            boolean didUpdateSale = database.update(sale);
+            if ( !didUpdateSale )
+                return false;
+        }
+        return true;
+    }
+
     private boolean deleteElementFromAllSales(String id) {
         List<Sale> sales = database.loadAll(Sale.class);
         for (Sale sale : sales) {
@@ -169,6 +201,14 @@ public class ElementService {
         return sales.stream()
                 .map(Sale::getBrand)
                 .anyMatch(brand -> brand.getId().equals(id));
+    }
+
+    private boolean paymentOptionIsNeededByAnySale(String id) {
+        List<Sale> sales = database.loadAll(Sale.class);
+        return sales.stream()
+                .map(Sale::getPaymentOptions)
+                .anyMatch(paymentOptions -> paymentOptions.stream()
+                        .anyMatch(paymentOption -> paymentOption.getId().equals(id)) && paymentOptions.size() < 2);
     }
 
     private boolean elementIsUsedByASaleAsBrand(String id) {
