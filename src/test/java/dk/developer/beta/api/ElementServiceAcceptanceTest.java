@@ -79,40 +79,6 @@ public class ElementServiceAcceptanceTest extends DatabaseInitialiser {
     }
 
     @Test
-    public void shouldDeleteElement() throws Exception {
-        Type element = new Type("Electronics");
-        saveToDatabase(element);
-
-        String id = element.getId();
-        Result post = to(ElementService.class).with(id).post("/element/delete");
-        ASSERT.that(post.status()).isSameAs(OK);
-
-        Type databaseElement = database.load(Type.class).matching("_id").with(id);
-        ASSERT.that(databaseElement).isNull();
-    }
-
-    @Test
-    public void shouldUpdateSaleWhenDeletingElement() throws Exception {
-        Type electronics = new Type("Electronics");
-        saveToDatabase(electronics);
-
-        PaymentOption cash = new PaymentOption("Cash");
-        PaymentOption creditCard = new PaymentOption("Credit Card");
-        Type clothing = new Type("Clothing");
-        Brand apple = new Brand("Apple");
-        Sale sale = new Sale(null, null, null, 0, 0, asList(cash, creditCard), asList(electronics, clothing), apple, null, null);
-        database.save(sale);
-
-        Result result = to(ElementService.class).with(electronics.getId()).post("/element/delete");
-        ASSERT.that(result.status()).isSameAs(OK);
-
-        Sale modifiedSale = database.load(Sale.class).matching("_id").with(sale.getId());
-        ASSERT.that(modifiedSale.getPaymentOptions()).containsExactly(cash, creditCard);
-        ASSERT.that(modifiedSale.getTypes()).containsExactly(clothing);
-        ASSERT.that(modifiedSale.getBrand()).isEqualTo(apple);
-    }
-
-    @Test
     public void shouldUpdateElement() throws Exception {
         Brand samsung = new Brand("Samsung");
         saveToDatabase(samsung);

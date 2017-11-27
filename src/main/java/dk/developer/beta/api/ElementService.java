@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.ListIterator;
 
 import static java.lang.String.format;
-import static java.util.Arrays.asList;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.*;
@@ -85,34 +84,6 @@ public class ElementService {
         if ( typeName.equalsIgnoreCase("type") ) return Element.Type.class;
         if ( typeName.equalsIgnoreCase("payment_option") ) return Element.PaymentOption.class;
         throw new ValidationException("Elementets type kunne ikke genkendes");
-    }
-
-    @POST
-    @Path("/delete")
-    @Consumes(APPLICATION_JSON)
-    public Response delete(
-            @NotEmpty(message = "Der er ikke angivet et id")
-            String id) {
-        if ( elementIsUsedByASaleAsBrand(id) )
-            throw new ValidationException("Brand er i brug hos et udsalg og kan ikke slettes");
-
-        if ( elementIsUsedByASaleAsPaymentOption(id) )
-            throw new ValidationException("Betalingsmulighed er i brug hos et udsalg og kan ikke slettes");
-
-        if ( elementIsUsedByASaleAsType(id) )
-            throw new ValidationException("Filter er i brug hos et udsalg og kan ikke slettes");
-
-        boolean didUpdateAllSales = deleteElementFromAllSales(id);
-        if ( !didUpdateAllSales )
-            throw new ValidationException("Der skete en fejl, da elementet skulle slettes fra et udsalg");
-
-        boolean didDelete = asList(Element.Brand.class, Element.Type.class, Element.PaymentOption.class).stream()
-                .anyMatch(type -> database.delete(type).matching("_id").with(id));
-
-        if ( !didDelete )
-            throw new ValidationException("Kunne ikke slette ikke-eksisterende element");
-
-        return Response.status(OK).build();
     }
 
     @POST
@@ -193,25 +164,6 @@ public class ElementService {
         return true;
     }
 
-    private boolean deleteElementFromAllSales(String id) {
-        List<Sale> sales = database.loadAll(Sale.class);
-        for (Sale sale : sales) {
-            List<Element.PaymentOption> paymentOptions = sale.getPaymentOptions();
-            boolean didRemovePaymentOption = removeIfExists(id, paymentOptions);
-
-            List<Element.Type> types = sale.getTypes();
-            boolean didRemoveType = removeIfExists(id, types);
-
-            if ( !didRemovePaymentOption && !didRemoveType )
-                continue;
-
-            boolean didUpdateSale = database.update(sale);
-            if ( !didUpdateSale )
-                return false;
-        }
-        return true;
-    }
-
     private boolean removeIfExists(String id, List<? extends Element> elements) {
         boolean elementContainsId = elements.stream()
                 .anyMatch(paymentOption -> paymentOption.getId().equals(id));
@@ -244,29 +196,6 @@ public class ElementService {
     }
 
     private boolean typeIsNeededByAnySale(String id) {
-        List<Sale> sales = database.loadAll(Sale.class);
-        return sales.stream()
-                .map(Sale::getTypes)
-                .anyMatch(types -> types.stream()
-                        .anyMatch(type -> type.getId().equals(id)) && types.size() < 2);
-    }
-
-    private boolean elementIsUsedByASaleAsBrand(String id) {
-        List<Sale> sales = database.loadAll(Sale.class);
-        return sales.stream()
-                .map(Sale::getBrand)
-                .anyMatch(brand -> brand.getId().equals(id));
-    }
-
-    private boolean elementIsUsedByASaleAsPaymentOption(String id) {
-        List<Sale> sales = database.loadAll(Sale.class);
-        return sales.stream()
-                .map(Sale::getPaymentOptions)
-                .anyMatch(paymentOptions -> paymentOptions.stream()
-                        .anyMatch(paymentOption -> paymentOption.getId().equals(id)) && paymentOptions.size() < 2);
-    }
-
-    private boolean elementIsUsedByASaleAsType(String id) {
         List<Sale> sales = database.loadAll(Sale.class);
         return sales.stream()
                 .map(Sale::getTypes)
