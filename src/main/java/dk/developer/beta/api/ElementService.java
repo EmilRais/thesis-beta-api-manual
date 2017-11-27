@@ -147,11 +147,43 @@ public class ElementService {
         return Response.status(OK).build();
     }
 
+    @POST
+    @Path("/delete/type/{id}")
+    @Produces(TEXT_PLAIN)
+    public Response deleteType(@PathParam("id") @NotEmpty(message = "Der er ikke angivet et id") String id) {
+        if ( typeIsNeededByAnySale(id) )
+            return Response.status(BAD_REQUEST).entity("Type er i brug hos et udsalg og kan ikke slettes").build();
+
+        boolean didUpdateAllSales = removeTypeFromAllSales(id);
+        if ( !didUpdateAllSales )
+            return Response.status(BAD_REQUEST).entity("Der skete en fejl, da elementet skulle slettes fra et udsalg").build();
+
+        boolean didDelete = database.delete(Element.Type.class).matching("_id").with(id);
+        if ( !didDelete )
+            return Response.status(BAD_REQUEST).entity("Kunne ikke slette type").build();
+
+        return Response.status(OK).build();
+    }
+
     private boolean removePaymentOptionFromAllSales(String id) {
         List<Sale> sales = database.loadAll(Sale.class);
         for (Sale sale : sales) {
             boolean didRemovePaymentOption = removeIfExists(id, sale.getPaymentOptions());
             if ( !didRemovePaymentOption )
+                continue;
+
+            boolean didUpdateSale = database.update(sale);
+            if ( !didUpdateSale )
+                return false;
+        }
+        return true;
+    }
+
+    private boolean removeTypeFromAllSales(String id) {
+        List<Sale> sales = database.loadAll(Sale.class);
+        for (Sale sale : sales) {
+            boolean didRemoveType = removeIfExists(id, sale.getTypes());
+            if ( !didRemoveType )
                 continue;
 
             boolean didUpdateSale = database.update(sale);
@@ -209,6 +241,14 @@ public class ElementService {
                 .map(Sale::getPaymentOptions)
                 .anyMatch(paymentOptions -> paymentOptions.stream()
                         .anyMatch(paymentOption -> paymentOption.getId().equals(id)) && paymentOptions.size() < 2);
+    }
+
+    private boolean typeIsNeededByAnySale(String id) {
+        List<Sale> sales = database.loadAll(Sale.class);
+        return sales.stream()
+                .map(Sale::getTypes)
+                .anyMatch(types -> types.stream()
+                        .anyMatch(type -> type.getId().equals(id)) && types.size() < 2);
     }
 
     private boolean elementIsUsedByASaleAsBrand(String id) {
