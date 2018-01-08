@@ -1,2 +1,2 @@
 mvn package
-docker build . -t emilrais/beta-api-manual
+docker build . -t emilrais/thesis-beta-api-manual
